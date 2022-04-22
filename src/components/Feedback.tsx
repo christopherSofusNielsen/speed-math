@@ -4,16 +4,21 @@ import { Expr } from "./Main";
 type FeedbackProps = {
   failed: Expr[];
   totalCalc: number;
+  timeS: number;
 };
 
-export const Feedback = ({ failed, totalCalc }: FeedbackProps) => {
+export const Feedback = ({ failed, totalCalc, timeS }: FeedbackProps) => {
   return (
     <div>
-      <p className="p-4 text-xl">
+      <p className="pt-4 text-xl">
         Missed {failed.length} out of {totalCalc}
       </p>
-      {failed.map((f) => (
-        <p>{`${f.p1} ${f.operator} ${f.p2} != ${f.answer}, correct ${f.result}`}</p>
+      <p className="pb-4 text-xl text-center ">Total time {timeS}</p>
+      {failed.map((f, index) => (
+        <p
+          className="text-center"
+          key={index}
+        >{`${f.p1} ${f.operator} ${f.p2} != ${f.answer}, correct ${f.result}`}</p>
       ))}
     </div>
   );

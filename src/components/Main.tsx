@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Feedback } from "./Feedback";
 
 enum State {
@@ -18,7 +18,11 @@ export type Expr = {
   answer?: number;
 };
 
+const MAX_CALC = 10;
+
 export const Main = () => {
+  const inputEl = useRef<HTMLInputElement>(null);
+  const buttonEl = useRef<HTMLButtonElement>(null);
   const [state, setState] = useState(State.WAITING);
   const [counter, setCounter] = useState(0);
   const [calcCnt, setCalcCnt] = useState(0);
@@ -30,20 +34,27 @@ export const Main = () => {
     result: 0,
   } as Expr);
   const [failed, setFailed] = useState([] as Expr[]);
+  const [timeStarted, setTimeStarted] = useState(0);
+  const [timeEnd, setTimeEnd] = useState(0);
 
   const onBtnClick = () => {
     if (state === State.STARTED || state === State.COUNT_DOWN) {
       setState(State.WAITING);
     } else {
       setState(State.COUNT_DOWN);
+      inputEl.current && inputEl.current.focus();
       setCounter(3);
     }
   };
 
   const initGame = useCallback(() => {
+    inputEl.current && inputEl.current.focus();
     setState(State.STARTED);
-    setCalcCnt(3);
+    setCalcCnt(MAX_CALC);
     updateCalc();
+    setValue("");
+    setTimeStarted(new Date().getTime());
+    setFailed([]);
   }, []);
 
   useEffect(() => {
@@ -67,14 +78,8 @@ export const Main = () => {
   };
 
   const onInputKeyUp = (e: React.KeyboardEvent) => {
+    if (state !== State.STARTED) return;
     if (e.key === "Enter" || e.key === " ") {
-      if (calcCnt === 1) {
-        setState(State.DONE);
-        setValue("");
-        return;
-      }
-
-      //Do something with the value!
       const parsedVal = parseInt(value);
       if (isNaN(parsedVal) || parsedVal !== calc.result) {
         //Store result
@@ -82,11 +87,17 @@ export const Main = () => {
         setFailed((a) => [...a, calc]);
       }
 
-      //Update calc
-      updateCalc();
+      if (calcCnt === 1) {
+        setState(State.DONE);
+        setValue("");
+        setTimeEnd(new Date().getTime());
+        buttonEl.current && buttonEl.current.focus();
+      } else {
+        updateCalc();
 
-      //subtract from calcCnt
-      setCalcCnt((c) => c - 1);
+        //subtract from calcCnt
+        setCalcCnt((c) => c - 1);
+      }
     }
   };
 
@@ -108,6 +119,7 @@ export const Main = () => {
           <p className="p-2 pb-4 text-2xl">{`${calc.p1} ${calc.operator} ${calc.p2}`}</p>
         )}
         <input
+          ref={inputEl}
           value={value}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             setValue(e.target.value)
@@ -124,6 +136,7 @@ export const Main = () => {
         <div className="p-6 pt-12">
           <button
             autoFocus
+            ref={buttonEl}
             onClick={onBtnClick}
             className="p-2 bg-white w-36 text-md hover:bg-cyan-200 focus:outline-none"
           >
@@ -132,7 +145,13 @@ export const Main = () => {
               : "Reset"}
           </button>
         </div>
-        {state === State.DONE && <Feedback failed={failed} totalCalc={3} />}
+        {state === State.DONE && (
+          <Feedback
+            failed={failed}
+            totalCalc={MAX_CALC}
+            timeS={(timeEnd - timeStarted) / 1000}
+          />
+        )}
       </div>
     </div>
   );
