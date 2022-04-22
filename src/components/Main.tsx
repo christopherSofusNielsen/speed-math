@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Feedback } from "./Feedback";
 
 enum State {
   WAITING,
@@ -9,11 +10,12 @@ enum State {
 
 type Operator = "+" | "-" | "*";
 
-type Expr = {
+export type Expr = {
   p1: number;
   p2: number;
   operator: Operator;
   result: number;
+  answer?: number;
 };
 
 export const Main = () => {
@@ -27,6 +29,7 @@ export const Main = () => {
     p2: 0,
     result: 0,
   } as Expr);
+  const [failed, setFailed] = useState([] as Expr[]);
 
   const onBtnClick = () => {
     if (state === State.STARTED || state === State.COUNT_DOWN) {
@@ -36,6 +39,12 @@ export const Main = () => {
       setCounter(3);
     }
   };
+
+  const initGame = useCallback(() => {
+    setState(State.STARTED);
+    setCalcCnt(3);
+    updateCalc();
+  }, []);
 
   useEffect(() => {
     if (state !== State.COUNT_DOWN) return;
@@ -50,43 +59,53 @@ export const Main = () => {
     }, 1000);
 
     return () => clearTimeout(timeout);
-  }, [state, counter]);
-
-  const initGame = () => {
-    setState(State.STARTED);
-    setCalcCnt(3);
-    updateCalc();
-  };
+  }, [state, counter, initGame]);
 
   const updateCalc = () => {
     setCalc(getCalculation());
+    setValue("");
   };
 
   const onInputKeyUp = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
+      if (calcCnt === 1) {
+        setState(State.DONE);
+        setValue("");
+        return;
+      }
+
       //Do something with the value!
-      //Store result
+      const parsedVal = parseInt(value);
+      if (isNaN(parsedVal) || parsedVal !== calc.result) {
+        //Store result
+        calc.answer = parsedVal;
+        setFailed((a) => [...a, calc]);
+      }
+
       //Update calc
+      updateCalc();
+
       //subtract from calcCnt
+      setCalcCnt((c) => c - 1);
     }
   };
 
   return (
-    <div className="w-screen h-screen bg-gray-50 flex flex-col items-center">
-      <h1 className="text-5xl m-10">SPEED MATH</h1>
+    <div className="flex flex-col items-center w-screen h-screen bg-gray-50">
+      <h1 className="m-10 text-5xl">SPEED MATH</h1>
       <div className="flex flex-col items-center p-5">
         {state === State.WAITING && (
-          <p className="text-2xl pb-4 italic">Press start to get started!</p>
+          <p className="pb-4 text-2xl italic">Press start to get started!</p>
         )}
         {state === State.COUNT_DOWN && (
-          <p className="text-xl pb-4">Be ready in {counter} s</p>
+          <p className="pb-4 text-xl">Be ready in {counter} s</p>
         )}
 
         {state === State.STARTED && (
           <p className="text-2xl underline">Expression</p>
         )}
         {state === State.STARTED && (
-          <p className="text-2xl p-2 pb-4">{`${calc.p1} ${calc.operator} ${calc.p2}`}</p>
+          <p className="p-2 pb-4 text-2xl">{`${calc.p1} ${calc.operator} ${calc.p2}`}</p>
         )}
         <input
           value={value}
@@ -97,7 +116,7 @@ export const Main = () => {
           type="text"
           name="result"
           placeholder="Result"
-          className="block border-r-0 border-0 text-2xl text-black placeholder:italic bg-white  p-4 outline-none text-center"
+          className="block p-4 text-2xl text-center text-black bg-white border-0 border-r-0 outline-none placeholder:italic"
         />
         <p>
           Use <strong>space</strong> or <strong>enter</strong> to confirm!
@@ -106,13 +125,14 @@ export const Main = () => {
           <button
             autoFocus
             onClick={onBtnClick}
-            className="bg-white p-2 w-36 text-md hover:bg-cyan-200 focus:outline-none"
+            className="p-2 bg-white w-36 text-md hover:bg-cyan-200 focus:outline-none"
           >
             {state === State.WAITING || state === State.DONE
               ? "Start"
               : "Reset"}
           </button>
         </div>
+        {state === State.DONE && <Feedback failed={failed} totalCalc={3} />}
       </div>
     </div>
   );
